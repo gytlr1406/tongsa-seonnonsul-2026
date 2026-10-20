@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2026. 중등 서논술형 평가 도움자료 개발 - 고등학교 통합사회1·2</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="logos">
+    <img src="assets/cbe_logo.png" alt="충청북도교육청" class="logo-cbe">
+    <span class="logo-sep"></span>
+    <img src="assets/dachaeum_logo.png" alt="다채움" class="logo-dc">
+  </div>
+  <div class="titles">
+    <div class="org">충청북도교육청</div>
+    <h1>2026. 중등 서논술형 평가 도움자료 개발 <span class="sub">고등학교 통합사회1·2</span></h1>
+  </div>
+</header>
+<nav class="tabs" id="tabs">
+  <button data-tab="cal" class="on">개발 일정표</button>
+  <button data-tab="asg">개발/검토 배정</button>
+  <button data-tab="std">성취기준 배분</button>
+</nav>
+<div id="banner" class="banner" hidden></div>
+<main>
+  <section id="tab-cal" class="tab on">
+    <div class="toolbar">
+      <div class="legend-period"><span class="sw period"></span>개발 기간 (10. 22. ~ 12. 11.)</div>
+      <button class="btn primary" id="btnAddEvent">+ 일정 추가</button>
+    </div>
+    <div id="calendar" class="calendar"></div>
+    <h3 class="sec-title">일정 목록</h3>
+    <div id="eventList" class="event-list"></div>
+  </section>
+
+  <section id="tab-asg" class="tab">
+    <p class="hint">각자 맡은 세트 수를 입력하세요. 입력하면 바로 저장됩니다. 2차 검토는 아직 정해지지 않아 입력할 수 없습니다.</p>
+    <div class="table-wrap"><table class="grid" id="asgTable"></table></div>
+  </section>
+
+  <section id="tab-std" class="tab">
+    <div class="toolbar wrap">
+      <div class="filters">
+        <select id="fVol"><option value="">전체 (통합사회1·2)</option><option>통합사회1</option><option>통합사회2</option></select>
+        <select id="fWho"><option value="">담당자 전체</option></select>
+        <input id="fText" type="search" placeholder="성취기준·영역 검색">
+        <label class="chk"><input type="checkbox" id="fMine"> 미배정만</label>
+      </div>
+      <div class="sorts">
+        <span>정렬</span>
+        <button class="btn small on" data-sort="code">코드순</button>
+        <button class="btn small" data-sort="name">담당자순</button>
+        <button class="btn small" id="btnCsv">CSV 내려받기</button>
+      </div>
+    </div>
+    <div id="stdSummary" class="summary"></div>
+    <div class="table-wrap"><table class="grid std" id="stdTable"></table></div>
+    <p class="hint">코드를 누르면 성취기준·해설·성취수준(A~E)을 볼 수 있습니다. 출처: 2022 개정 사회과 교육과정(교육부 고시 제2022-33호 [별책 7]), 성취수준은 KICE 「2022 개정 교육과정에 따른 고등학교 사회과 공통과목 성취수준 개발 연구」(CRC 2024-23) 부록 본표.</p>
+  </section>
+
+  <section id="tab-lead" class="tab"><div id="leadMount"></div></section>
+</main>
+
+<div id="modal" class="modal" hidden><div class="modal-box" role="dialog" aria-modal="true"><button class="modal-x" aria-label="닫기">×</button><div id="modalBody"></div></div></div>
+<div id="toast" class="toast" hidden></div>
+<footer class="foot">충청북도교육청 · 2026. 중등 서논술형 평가 도움자료 개발 · 고등학교 통합사회1·2 개발팀</footer>
+
+<script src="config.js"></script>
+<script src="data/standards.js"></script>
+<script src="lead.enc.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

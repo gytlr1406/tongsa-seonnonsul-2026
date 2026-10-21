@@ -107,3 +107,5 @@ table.grid{width:100%;border-collapse:collapse;font-size:14px}
 
 .tabs .dl-btn{margin-left:auto;color:var(--navy)}
 .btn.small.primary{background:var(--navy);color:#fff;border-color:var(--navy);text-decoration:none}
+.tabs .drive-btn{display:flex;align-items:center;padding:12px 16px;font-weight:600;color:#188038;text-decoration:none;white-space:nowrap;border-bottom:3px solid transparent}
+.tabs .drive-btn:hover{color:#0b5d24;border-bottom-color:#188038}

@@ -347,6 +347,19 @@
     a.click();
   }
 
+
+  // ------------------------------------------------------------ 자료 다운로드
+  function downloadsModal() {
+    const list = window.DOWNLOADS || [];
+    const items = list.map((d) => {
+      const name = d.file.split("/").pop();
+      return `<div class="ev"><span class="dot" style="background:#1f3864"></span><span class="what">${esc(d.title)}<span class="memo">${esc(name)}${d.desc ? " · " + esc(d.desc) : ""}</span></span><span class="act"><a class="btn small primary" href="${encodeURI(d.file)}" download="${esc(name)}">내려받기</a></span></div>`;
+    }).join("") || `<p class="hint">등록된 자료가 없습니다.</p>`;
+    openModal(`<h3>자료 다운로드</h3><div class="meta">필요한 파일의 '내려받기'를 누르세요.</div><div class="event-list">${items}</div>
+      <div class="form-actions"><div class="right"><button class="btn" id="dlClose">닫기</button></div></div>`,
+      (box) => { $("#dlClose", box).onclick = closeModal; });
+  }
+
   // ------------------------------------------------------------ 팀장 전용 메뉴(암호화된 모듈)
   async function unlockLead(pw) {
     const enc = window.LEAD_ENC; if (!enc) return false;
@@ -412,6 +425,7 @@
     $("#fMine").addEventListener("change", (e) => { stdView.unassigned = e.target.checked; renderStd(); });
     document.querySelectorAll("[data-sort]").forEach((b) => b.addEventListener("click", () => { stdView.sort = b.dataset.sort; document.querySelectorAll("[data-sort]").forEach((x) => x.classList.toggle("on", x === b)); renderStd(); }));
     $("#btnCsv").addEventListener("click", exportCsv);
+    $("#btnDownloads").addEventListener("click", downloadsModal);
     window.addEventListener("hashchange", () => { if (location.hash === "#admin" && !leadOn) leadPrompt(); });
 
     if (!API) { const bn = $("#banner"); bn.hidden = false; bn.textContent = "아직 공유 저장소가 연결되지 않아 입력 내용이 이 브라우저에만 저장됩니다."; }

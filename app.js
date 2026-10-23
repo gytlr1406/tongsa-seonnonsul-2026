@@ -15,7 +15,7 @@
       { id: "p2", name: "최선희", school: "충북대학교사범대학부설고등학교", major: "일반사회", dev: "", rev1: "" },
       { id: "p3", name: "임한진", school: "충주여자고등학교", major: "일반사회", dev: "", rev1: "" },
       { id: "p4", name: "임동현", school: "대금고등학교", major: "윤리", dev: "", rev1: "" },
-      { id: "p5", name: "변성일", school: "주성고등학교", major: "일반사회", dev: "", rev1: "" },
+      { id: "p5", name: "변성일", school: "주성고등학교", major: "지리", dev: "", rev1: "" },
       { id: "p6", name: "노현경", school: "충북체육고등학교", major: "일반사회", dev: "", rev1: "" }
     ],
     events: [

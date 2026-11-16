@@ -120,3 +120,5 @@ table.grid{width:100%;border-collapse:collapse;font-size:14px}
 .match-side ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px;font-size:14px}
 .match-side .sets{color:#374151}
 @media (max-width:760px){.match-grid{grid-template-columns:1fr}}
+.match .code{color:#6b7280;font-weight:400;font-size:12px}
+.match tr.cross td{background:#fafbfd}

@@ -326,44 +326,73 @@
   // ------------------------------------------------------------ 2-1. 1차 검토자 무작위 매칭
   // 고정된 시드로 뽑으므로 누가 열어도 같은 결과가 나온다(웹앱에서 다시 섞을 수 없음).
   // 세트 이름은 '개발자 n세트'. 자기 세트는 검토하지 않고, 같은 개발자의 세트가 한 검토자에게 몰리지 않게 고른다.
+  // 전공 고려(2026-11-17 팀장 결정)
+  //  - 윤리 전공(임동현)이 개발한 세트는 중학교 윤리과 팀과 교차 검토하므로 이 매칭에서 뺀다.
+  //  - 지리 전공(변성일)은 아래 두 세트만 검토한다.
+  //  - 나머지 세트는 일반사회 전공 네 명(민효식, 최선희, 임한진, 노현경)이 나누어 검토한다.
   const MATCH_SEED = 20261117;
+  const MATCH_CROSS = ["p4"];
+  const MATCH_FIXED = [{ dev: "p3", code: "10통사1-05-02", rev: "p5" }, { dev: "p6", code: "10통사2-05-02", rev: "p5" }];
   function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
   function makeMatch(seed) {
-    const sets = []; state.people.forEach((p) => { for (let k = 0; k < (Number(p.dev) || 0); k++) sets.push({ no: sets.length + 1, k: k + 1, dev: p.id }); });
-    const cap0 = Object.fromEntries(state.people.map((p) => [p.id, Number(p.rev1) || 0]));
-    if (!sets.length || sets.length !== Object.values(cap0).reduce((a, b) => a + b, 0)) return { sets, ok: false, why: "개발 세트 합계와 1차 검토 세트 합계가 같아야 매칭할 수 있습니다." };
+    const sets = [];
+    state.people.forEach((p) => {
+      const fixed = MATCH_FIXED.filter((f) => f.dev === p.id);
+      for (let k = 0; k < (Number(p.dev) || 0); k++) {
+        const s = { k: k + 1, dev: p.id };
+        if (fixed[k]) { s.code = fixed[k].code; s.rev = fixed[k].rev; s.fixed = true; }
+        if (MATCH_CROSS.includes(p.id)) s.cross = true;
+        sets.push(s);
+      }
+    });
+    const fixedReviewers = new Set(MATCH_FIXED.map((f) => f.rev));
+    const pool = state.people.filter((p) => !MATCH_CROSS.includes(p.id) && !fixedReviewers.has(p.id));
+    const todo = sets.filter((s) => !s.cross && !s.fixed);
+    const cap0 = Object.fromEntries(pool.map((p) => [p.id, Number(p.rev1) || 0]));
+    if (!sets.length) return { sets, ok: false, why: "위 표에 개발 세트 수를 입력하면 매칭이 나타납니다." };
+    if (todo.length > Object.values(cap0).reduce((a, b) => a + b, 0)) return { sets, ok: false, why: "검토할 세트에 비해 일반사회 전공 검토자의 1차 검토 세트 수가 부족합니다. 위 표의 숫자를 확인해 주세요." };
     const rand = rng(seed);
-    for (let tries = 0; tries < 500; tries++) {
-      const cap = Object.assign({}, cap0), seen = {}, order = sets.slice().sort(() => rand() - 0.5);
+    let best = null;
+    for (let tries = 0; tries < 800; tries++) {
+      const cap = Object.assign({}, cap0), seen = {}, got = {}, order = todo.slice().sort(() => rand() - 0.5);
       let fail = false;
       for (const s of order) {
-        const cands = state.people.filter((p) => p.id !== s.dev && cap[p.id] > 0);
+        const cands = pool.filter((p) => p.id !== s.dev && cap[p.id] > 0);
         if (!cands.length) { fail = true; break; }
-        const score = (p) => (seen[p.id + s.dev] || 0) * 10 - cap[p.id] + rand();
+        const score = (p) => (seen[p.id + s.dev] || 0) * 10 + (got[p.id] || 0) * 2 - cap[p.id] * 0.1 + rand();
         cands.sort((a, b) => score(a) - score(b));
-        const r = cands[0]; s.rev = r.id; cap[r.id]--; seen[r.id + s.dev] = (seen[r.id + s.dev] || 0) + 1;
+        const r = cands[0]; s.rev = r.id; cap[r.id]--; got[r.id] = (got[r.id] || 0) + 1; seen[r.id + s.dev] = (seen[r.id + s.dev] || 0) + 1;
       }
-      if (!fail && (Math.max(...Object.values(seen)) <= 1 || tries >= 400)) return { sets, ok: true };
+      if (fail) continue;
+      const spread = Math.max(0, ...Object.values(seen)) <= 1;
+      if (spread) return { sets, ok: true };
+      if (!best) best = todo.map((s) => s.rev);
     }
-    return { sets, ok: false, why: "조건에 맞는 매칭을 찾지 못했습니다. 세트 수를 확인해 주세요." };
+    if (best) { todo.forEach((s, i) => { s.rev = best[i]; }); return { sets, ok: true }; }
+    return { sets, ok: false, why: "조건에 맞는 매칭을 찾지 못했습니다. 위 표의 세트 수를 확인해 주세요." };
   }
   function renderMatch() {
     const el = $("#asgMatch"); if (!el) return;
     const m = makeMatch(MATCH_SEED);
     const nm = (id) => { const p = state.people.find((x) => x.id === id); return p ? p.name : ""; };
     const chip = (id) => `<span class="name-chip"><i style="background:${PERSON_DOT[personIndex(id) % 6]}"></i>${esc(nm(id))}</span>`;
+    const setName = (s) => `${esc(nm(s.dev))} ${s.k}세트${s.code ? ` <span class="code">[${esc(s.code)}]</span>` : ""}`;
     let body;
     if (!m.ok) body = `<p class="hint">${esc(m.why)}</p>`;
     else {
-      const setName = (s) => `${esc(nm(s.dev))} ${s.k}세트`;
-      const rows = m.sets.map((s) => `<tr><td><span class="name-chip"><i style="background:${PERSON_DOT[personIndex(s.dev) % 6]}"></i>${setName(s)}</span></td><td>${chip(s.rev)}</td><td class="num na">미정</td></tr>`).join("");
-      const byRev = state.people.map((p) => { const mine = m.sets.filter((s) => s.rev === p.id); return mine.length ? `<li>${chip(p.id)} <span class="sets">${mine.map(setName).join(", ")}</span></li>` : ""; }).join("");
+      const revCell = (s) => s.cross ? `<span class="na">중학교 윤리과 교차 검토</span>` : chip(s.rev);
+      const rows = m.sets.map((s) => `<tr${s.cross ? ' class="cross"' : ""}><td><span class="name-chip"><i style="background:${PERSON_DOT[personIndex(s.dev) % 6]}"></i>${setName(s)}</span></td><td>${revCell(s)}</td><td class="num na">미정</td></tr>`).join("");
+      const byRev = state.people.map((p) => {
+        if (MATCH_CROSS.includes(p.id)) return `<li>${chip(p.id)} <span class="sets na">중학교 윤리과와 교차 검토</span></li>`;
+        const mine = m.sets.filter((s) => !s.cross && s.rev === p.id);
+        return `<li>${chip(p.id)} <span class="sets">${mine.length ? mine.map(setName).join(", ") : "없음"}</span></li>`;
+      }).join("");
       body = `<div class="match-grid">
         <div class="table-wrap"><table class="grid"><thead><tr><th>세트</th><th>1차 검토</th><th class="num">2차 검토</th></tr></thead><tbody>${rows}</tbody></table></div>
         <div class="match-side"><h4>검토자별 맡은 세트</h4><ul>${byRev}</ul></div></div>`;
     }
     el.innerHTML = `<div class="match-head"><h3>1차 검토 매칭</h3></div>
-      <p class="hint">위 표의 세트 수를 바탕으로 무작위로 매칭한 결과입니다. 자기가 개발한 세트는 검토하지 않으며, 같은 사람의 세트가 한 검토자에게 몰리지 않게 나누었습니다.</p>${body}`;
+      <p class="hint">전공을 고려하여 배정했습니다. 윤리 세트는 중학교 윤리과와 교차 검토하고, 지리 전공 선생님은 지정된 두 세트를 검토하며, 나머지 세트는 일반사회 전공 선생님들이 무작위로 나누어 맡습니다. 자기가 개발한 세트는 검토하지 않고, 같은 사람의 세트가 한 검토자에게 몰리지 않게 나누었습니다.</p>${body}`;
   }
 
   // ------------------------------------------------------------ 3. 성취기준 배분

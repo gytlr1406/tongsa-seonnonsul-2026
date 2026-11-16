@@ -406,8 +406,7 @@
         <div class="table-wrap"><table class="grid"><thead><tr><th>세트</th><th>1차 검토</th><th class="num">2차 검토</th></tr></thead><tbody>${rows}</tbody></table></div>
         <div class="match-side"><h4>검토자별 맡은 세트</h4><ul>${byRev}</ul></div></div>`;
     }
-    el.innerHTML = `<div class="match-head"><h3>1차 검토 매칭</h3></div>
-      <p class="hint">전공을 고려하여 배정했습니다. 윤리 세트는 중학교 윤리과와 교차 검토합니다. 변성일 선생님(지리)과 민효식 선생님은 지정된 두 세트를 검토하고, 나머지 세트는 최선희, 임한진, 노현경 선생님이 무작위로 나누어 맡습니다. 세트 옆의 코드는 1차 개발본의 성취기준입니다. 자기가 개발한 세트는 검토하지 않고, 같은 사람의 세트가 한 검토자에게 몰리지 않게 나누었습니다.</p>${body}`;
+    el.innerHTML = `<div class="match-head"><h3>1차 검토 매칭</h3></div>${body}`;
   }
 
   // ------------------------------------------------------------ 3. 성취기준 배분

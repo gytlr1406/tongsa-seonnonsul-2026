@@ -122,3 +122,4 @@ table.grid{width:100%;border-collapse:collapse;font-size:14px}
 @media (max-width:760px){.match-grid{grid-template-columns:1fr}}
 .match .code{color:#6b7280;font-weight:400;font-size:12px}
 .match tr.cross td{background:#fafbfd}
+.match .nowrap{white-space:nowrap}

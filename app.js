@@ -32,6 +32,7 @@
   const STD_BY_CODE = Object.fromEntries(STANDARDS.map((s) => [s.code, s]));
   const API = (window.APP_CONFIG && window.APP_CONFIG.apiUrl) || "";
   const LOCAL_KEY = "tongsa2026_state_v1";
+  const CACHE_KEY = "tongsa2026_cache_v1";   // 공유 저장소에서 마지막으로 받은 내용(첫 화면을 바로 그리는 데 씀)
 
   // ------------------------------------------------------------ 상태·저장
   let state = clone(SEED);
@@ -57,28 +58,63 @@
   }
   function localSave(s) { try { localStorage.setItem(LOCAL_KEY, JSON.stringify(s)); } catch (e) { /* 무시 */ } }
 
-  async function remoteGet() {
-    const r = await fetch(API + (API.includes("?") ? "&" : "?") + "action=get&t=" + Date.now(), { redirect: "follow" });
-    const j = await r.json();
-    if (!j.ok) throw new Error(j.error || "불러오기 실패");
-    return j.state;
+  function cacheLoad() {
+    try { const t = localStorage.getItem(CACHE_KEY); if (t) return JSON.parse(t); } catch (e) { /* 무시 */ }
+    return null;
   }
-  async function remotePost(op) {
-    const r = await fetch(API, { method: "POST", redirect: "follow", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ op }) });
-    const j = await r.json();
-    if (!j.ok) throw new Error(j.error || "저장 실패");
-    return j.state;
+  function cacheSave(s) { try { localStorage.setItem(CACHE_KEY, JSON.stringify(s)); } catch (e) { /* 무시 */ } }
+
+  // 공유 저장소 요청: 제한 시간을 두고, 브라우저의 로그인 정보·캐시를 쓰지 않는다.
+  async function api(url, opt, ms) {
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), ms);
+    try {
+      const r = await fetch(url, Object.assign({ redirect: "follow", credentials: "omit", cache: "no-store", signal: ac.signal }, opt || {}));
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || "요청 실패");
+      if (j.state && j.state.people) cacheSave(j.state);
+      return j.state;
+    } finally { clearTimeout(timer); }
+  }
+  function remoteGet() {
+    return api(API + (API.includes("?") ? "&" : "?") + "action=get&t=" + Date.now(), null, 8000);
+  }
+  function remotePost(op) {
+    return api(API, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ op }) }, 15000);
   }
 
-  async function load() {
+  function setBanner(msg, retry) {
+    const bn = $("#banner");
+    if (!msg) { bn.hidden = true; bn.textContent = ""; return; }
+    bn.hidden = false; bn.textContent = msg + " ";
+    if (retry) {
+      const b = document.createElement("button");
+      b.type = "button"; b.textContent = "다시 시도"; b.className = "banner-btn";
+      b.addEventListener("click", loadRemote);
+      bn.appendChild(b);
+    }
+  }
+  function editing() {
+    const a = document.activeElement;
+    return busy || !document.getElementById("modal").hidden || (a && (a.tagName === "INPUT" || a.tagName === "SELECT" || a.tagName === "TEXTAREA"));
+  }
+
+  // 첫 화면은 저장소 응답을 기다리지 않고 바로 그린다.
+  function loadFirst() {
     if (!API) { state = normalize(localLoad()); return; }
+    state = normalize(cacheLoad() || clone(SEED));
+  }
+  let remoteOk = false;
+  async function loadRemote() {
+    if (!API) return;
+    setBanner("공유 저장소에서 최신 내용을 불러오는 중입니다.");
     try {
       let s = await remoteGet();
       if (!s || !s.people) s = await remotePost({ type: "init", state: clone(SEED) });
-      state = normalize(s);
+      remoteOk = true; setBanner("");
+      if (!editing()) { state = normalize(s); renderAll(); }
     } catch (e) {
-      toast("공유 저장소에 연결하지 못했습니다. 잠시 후 새로고침해 주세요.");
-      state = normalize(localLoad());
+      setBanner("공유 저장소에 연결하지 못해 이전에 받아 둔 내용을 보여 주고 있습니다.", true);
     }
   }
 
@@ -104,7 +140,11 @@
     if (!API || busy || document.hidden || !document.getElementById("modal").hidden) return;
     const a = document.activeElement;
     if (a && (a.tagName === "INPUT" || a.tagName === "SELECT" || a.tagName === "TEXTAREA")) return;
-    try { const s = await remoteGet(); if (s && s.updated !== state.updated) { state = normalize(s); renderAll(); } } catch (e) { /* 다음 주기에 다시 */ }
+    try {
+      const s = await remoteGet();
+      if (!remoteOk) { remoteOk = true; setBanner(""); }
+      if (s && s.updated !== state.updated) { state = normalize(s); renderAll(); }
+    } catch (e) { /* 다음 주기에 다시 */ }
   }
 
   // ------------------------------------------------------------ 유틸
@@ -429,9 +469,10 @@
     window.addEventListener("hashchange", () => { if (location.hash === "#admin" && !leadOn) leadPrompt(); });
 
     if (!API) { const bn = $("#banner"); bn.hidden = false; bn.textContent = "아직 공유 저장소가 연결되지 않아 입력 내용이 이 브라우저에만 저장됩니다."; }
-    await load();
+    loadFirst();
     renderAll();
     checkLead();
+    loadRemote();
     setInterval(poll, 20000);
     document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
   });

@@ -320,6 +320,50 @@
       inp.value = val;
       send({ type: "person", id: inp.dataset.id, field: inp.dataset.f, value: val === "" ? "" : String(val) });
     }));
+    renderMatch();
+  }
+
+  // ------------------------------------------------------------ 2-1. 1차 검토자 무작위 매칭
+  // 고정된 시드로 뽑으므로 누가 열어도 같은 결과가 나온다(웹앱에서 다시 섞을 수 없음).
+  // 세트 이름은 '개발자 n세트'. 자기 세트는 검토하지 않고, 같은 개발자의 세트가 한 검토자에게 몰리지 않게 고른다.
+  const MATCH_SEED = 20261117;
+  function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+  function makeMatch(seed) {
+    const sets = []; state.people.forEach((p) => { for (let k = 0; k < (Number(p.dev) || 0); k++) sets.push({ no: sets.length + 1, k: k + 1, dev: p.id }); });
+    const cap0 = Object.fromEntries(state.people.map((p) => [p.id, Number(p.rev1) || 0]));
+    if (!sets.length || sets.length !== Object.values(cap0).reduce((a, b) => a + b, 0)) return { sets, ok: false, why: "개발 세트 합계와 1차 검토 세트 합계가 같아야 매칭할 수 있습니다." };
+    const rand = rng(seed);
+    for (let tries = 0; tries < 500; tries++) {
+      const cap = Object.assign({}, cap0), seen = {}, order = sets.slice().sort(() => rand() - 0.5);
+      let fail = false;
+      for (const s of order) {
+        const cands = state.people.filter((p) => p.id !== s.dev && cap[p.id] > 0);
+        if (!cands.length) { fail = true; break; }
+        const score = (p) => (seen[p.id + s.dev] || 0) * 10 - cap[p.id] + rand();
+        cands.sort((a, b) => score(a) - score(b));
+        const r = cands[0]; s.rev = r.id; cap[r.id]--; seen[r.id + s.dev] = (seen[r.id + s.dev] || 0) + 1;
+      }
+      if (!fail && (Math.max(...Object.values(seen)) <= 1 || tries >= 400)) return { sets, ok: true };
+    }
+    return { sets, ok: false, why: "조건에 맞는 매칭을 찾지 못했습니다. 세트 수를 확인해 주세요." };
+  }
+  function renderMatch() {
+    const el = $("#asgMatch"); if (!el) return;
+    const m = makeMatch(MATCH_SEED);
+    const nm = (id) => { const p = state.people.find((x) => x.id === id); return p ? p.name : ""; };
+    const chip = (id) => `<span class="name-chip"><i style="background:${PERSON_DOT[personIndex(id) % 6]}"></i>${esc(nm(id))}</span>`;
+    let body;
+    if (!m.ok) body = `<p class="hint">${esc(m.why)}</p>`;
+    else {
+      const setName = (s) => `${esc(nm(s.dev))} ${s.k}세트`;
+      const rows = m.sets.map((s) => `<tr><td><span class="name-chip"><i style="background:${PERSON_DOT[personIndex(s.dev) % 6]}"></i>${setName(s)}</span></td><td>${chip(s.rev)}</td><td class="num na">미정</td></tr>`).join("");
+      const byRev = state.people.map((p) => { const mine = m.sets.filter((s) => s.rev === p.id); return mine.length ? `<li>${chip(p.id)} <span class="sets">${mine.map(setName).join(", ")}</span></li>` : ""; }).join("");
+      body = `<div class="match-grid">
+        <div class="table-wrap"><table class="grid"><thead><tr><th>세트</th><th>1차 검토</th><th class="num">2차 검토</th></tr></thead><tbody>${rows}</tbody></table></div>
+        <div class="match-side"><h4>검토자별 맡은 세트</h4><ul>${byRev}</ul></div></div>`;
+    }
+    el.innerHTML = `<div class="match-head"><h3>1차 검토 매칭</h3></div>
+      <p class="hint">위 표의 세트 수를 바탕으로 무작위로 매칭한 결과입니다. 자기가 개발한 세트는 검토하지 않으며, 같은 사람의 세트가 한 검토자에게 몰리지 않게 나누었습니다.</p>${body}`;
   }
 
   // ------------------------------------------------------------ 3. 성취기준 배분
